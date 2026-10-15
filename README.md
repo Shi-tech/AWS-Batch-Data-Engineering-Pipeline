@@ -1,106 +1,90 @@
-# AWS Batch Data Engineering Pipeline (End-to-End)
+# AWS Retail Batch Data Pipeline
 
 ## Project Overview
-This project demonstrates a real-world, end-to-end batch data engineering pipeline built on AWS.
 
-The pipeline ingests raw CSV data into an Amazon S3 data lake, performs data cleaning and transformations using Python, orchestrates workflows using Apache Airflow running on EC2, enables analytics using Amazon Athena, and supports downstream visualization using BI tools such as Tableau.
+A retail analytics project that processes sales data using Amazon S3, Python, Apache Airflow, and Amazon Athena.
 
-This project closely mirrors industry-grade data engineering practices, including layered data lakes, batch orchestration, schema optimization, and analytics-ready data modeling.
+The pipeline reads raw CSV data from S3, validates and transforms sales records, and writes cleaned data in compressed Parquet format. Airflow schedules the processing workflow, while Athena SQL queries support revenue analysis.
 
----
+## Architecture
 
-## Architecture Overview
+**S3 Raw CSV → Python ETL scheduled by Airflow → S3 Parquet → Athena SQL**
 
-### Data Flow
+Airflow can run on an EC2 instance. Tableau can be connected to Athena as a future visualization enhancement.
 
-Raw CSV (Amazon S3)  
-↓  
-Apache Airflow (EC2)  
-↓  
-Python ETL (pandas)  
-↓  
-S3 Clean Layer (Parquet)  
-↓  
-Amazon Athena (SQL Analytics)  
-↓  
-Visualization (Tableau)
+## Data Lake Organization
 
----
+| Layer | Example S3 location | Purpose |
+|---|---|---|
+| Raw | `s3://YOUR_BUCKET/raw/csv/OnlineRetail.csv` | Source retail transactions |
+| Clean | `s3://YOUR_BUCKET/clean/online_retail/online_retail_clean.parquet` | Validated sales records |
+| Query results | Configure in Athena | Store SQL query results |
 
-## Data Lake Structure
-
-s3://de-batch-data-lake-prakash/  
-│  
-├── raw/  
-│   └── csv/  
-│       └── OnlineRetail.csv  
-│  
-├── clean/  
-│   └── online_retail/  
-│       └── online_retail_clean.parquet  
-│  
-└── analytics/
-│   └── final
-
----
+The bucket name and object paths are configurable.
 
 ## Technologies Used
 
-- Amazon S3 – Data lake storage (raw and clean layers)
-- Apache Airflow – Workflow orchestration (running on EC2)
-- Python (pandas) – Data cleaning and transformations
-- Amazon Athena – Serverless SQL analytics
-- AWS IAM – Secure role-based access control
-- Tableau – Data visualization and dashboards
-- GitHub – Version control and documentation
-
----
+- **Amazon S3:** Raw and cleaned data storage.
+- **Python and pandas:** Data validation and transformation.
+- **PyArrow:** Snappy-compressed Parquet output.
+- **Apache Airflow:** Daily scheduling, task retries, and execution timeout.
+- **Amazon Athena:** SQL analysis of cleaned retail data.
+- **AWS IAM:** Role-based access configured during deployment.
+- **S3 server-side encryption:** S3-managed encryption or optional AWS KMS encryption for output.
+- **Git and GitHub:** Source control and project documentation.
 
 ## Pipeline Workflow
 
-1. Raw retail CSV data is uploaded to Amazon S3 (raw layer)
-2. An Apache Airflow DAG orchestrates the batch workflow
-3. Python ETL script performs:
-   - Removal of invalid and null records
-   - Data type normalization
-   - Revenue calculation (quantity × unit_price)
-   - Date enrichment (year, month)
-4. Cleaned data is written back to S3 in Parquet format
-5. Amazon Athena is used to query analytics-ready data
-6. Aggregated insights are visualized using Tableau
+1. Upload the source retail CSV to the S3 raw layer.
+2. Trigger the ETL manually or through the scheduled Airflow DAG.
+3. Validate that all required source columns are present.
+4. Exclude cancelled invoices, invalid dates, invalid customer IDs, and nonpositive quantities or prices.
+5. Calculate sales value as quantity multiplied by unit price.
+6. Extract year and month for time-based analysis.
+7. Write cleaned records to S3 as compressed Parquet with explicit server-side encryption.
+8. Log input, output, and rejected record counts.
+9. Run Athena queries to analyze the cleaned dataset.
 
----
+## Analytics Supported
 
-## Key Insights Generated
+- Total positive sales revenue.
+- Top countries by sales revenue.
+- Monthly sales trends.
 
-- Overall business revenue
-- Top revenue-generating countries
-- Monthly revenue trends
-- Optimized analytics using Parquet format
+Cancelled orders and returns are excluded, so these results represent positive sales rather than net revenue after returns.
 
----
+## Reliability and Security
 
-## What I Learned
+- Configuration through environment variables.
+- No hardcoded AWS credentials.
+- Schema validation before processing.
+- Failure before upload when no valid records remain.
+- Airflow retries and task execution timeout.
+- A consistent output key to prevent duplicate files during reruns.
+- Configurable S3-managed or KMS-based output encryption.
 
-- Designing S3-based data lake architectures
-- Building and operating Apache Airflow on EC2
-- Writing production-style Python ETL pipelines
-- Managing secure AWS access using IAM roles
-- Query optimization using Parquet and Athena
-- Understanding batch processing cost considerations
+Bucket policies, IAM permissions, raw-file encryption, and Athena query-result encryption must be configured separately during deployment.
 
----
+## Testing
+
+Five local tests cover transformation results, required columns, empty valid output, nonfinite numeric values, and encryption configuration.
+
+AWS and Airflow deployment still require validation in the target environment.
+
+## Current Scope
+
+The project performs a full refresh and processes data in memory using pandas. Athena queries are provided separately from the Airflow workflow.
 
 ## Future Enhancements
 
-- Partition Parquet data by year and month
-- Add data quality checks in Airflow
-- Automate scheduling and monitoring
-- Enable BI auto-refresh
-- Add alerting and logging
+- Incremental ingestion and historical processing.
+- Parquet partitioning by year and month.
+- A quarantine layer for rejected records.
+- Automated Athena query execution.
+- Monitoring and failure notifications.
+- Infrastructure as code and CI checks.
+- A Tableau dashboard.
 
----
+## Project Provenance
 
-## Why This Project Matters
-
-This project reflects how modern batch data engineering pipelines are implemented in production, combining cloud storage, orchestration, transformation, analytics, and visualization into a scalable and maintainable system.
+This project adapts an existing retail pipeline baseline with additional configuration, validation, encryption options, tests, and documentation. Included reference screenshots show the original baseline; updated deployment screenshots should be captured after running this version.
